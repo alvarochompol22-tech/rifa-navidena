@@ -87,7 +87,7 @@ th,td{border:1px solid #e2e8f0;padding:8px;text-align:left}
   <span class="badge">✨ 2 GANADORES ✨</span>
   <h1>Gran Rifa Navideña</h1>
   <div class="price">Valor del boleto: $2.00</div>
-  <small style="color:#64748b">Elige tus números (00 al 100), transfiere y envía tu comprobante</small><br>
+  <small style="color:#64748b">Elige tus números (01 al 100), transfiere y envía tu comprobante</small><br>
   <button class="btn-prizes" onclick="openPrizes()">🎁 Ver premios</button>
 </header>
 
@@ -179,7 +179,7 @@ const db = getDatabase(initializeApp(firebaseConfig));
 const ticketsRef = ref(db, 'rifa_crepier');
 
 let tickets = {}, selected = [], isAdmin = false, filter = 'all';
-const all = Array.from({length: 101}, (_, i) => String(i).padStart(2, '0'));
+const all = Array.from({length: 100}, (_, i) => String(i + 1).padStart(2, '0'));
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const byNum = (a, b) => Number(a) - Number(b);
