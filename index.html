@@ -77,6 +77,10 @@ input{flex:1;min-width:180px;padding:10px 12px;border:1px solid #cbd5e1;border-r
 table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:10px}
 th,td{border:1px solid #e2e8f0;padding:8px;text-align:left}
 .btn-sm{padding:4px 8px;border:0;border-radius:4px;cursor:pointer;color:#fff;font-size:.75rem;margin-right:4px}
+.admin-add{background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:10px;margin:10px 0}
+.admin-add h4{margin:0 0 8px}
+select{padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:.95rem;background:#fff}
+.btn-alt{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#0f172a;color:#fff;padding:10px 18px;border-radius:24px;font-size:.9rem;transition:transform .25s;z-index:99;max-width:90%;text-align:center}
 #toast.show{transform:translateX(-50%) translateY(0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -139,6 +143,17 @@ th,td{border:1px solid #e2e8f0;padding:8px;text-align:left}
 <div class="admin-footer"><button class="admin-link" onclick="toggleAdmin()">Acceso administrador</button></div>
 <div id="admin-panel">
   <h3>Panel de control</h3>
+  <div class="admin-add">
+    <h4>➕ Agregar venta en persona</h4>
+    <div class="form">
+      <input type="text" id="a-name" placeholder="Nombre y apellido">
+      <input type="tel" id="a-phone" placeholder="Teléfono (opcional)">
+      <input type="text" id="a-nums" placeholder="Números (ej. 05, 12, 37)">
+      <select id="a-status"><option value="paid">Pagado</option><option value="reserved">Reservado</option></select>
+      <button class="btn-alt" onclick="fillFromSel()">Usar los elegidos en la grilla</button>
+      <button class="btn-submit" onclick="adminAdd()">Agregar</button>
+    </div>
+  </div>
   <div style="overflow-x:auto"><table>
     <thead><tr><th>#</th><th>Participante</th><th>Teléfono</th><th>Estado</th><th>Acciones</th></tr></thead>
     <tbody id="admin-table"></tbody>
@@ -306,13 +321,34 @@ function renderAdmin() {
   keys.forEach(num => {
     const it = tickets[num], paid = it.status === 'paid';
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><strong>${esc(num)}</strong></td><td>${esc(it.name)}</td><td>${esc(it.phone)}</td>
+    tr.innerHTML = `<td><strong>${esc(num)}</strong></td><td>${esc(it.name)}</td><td>${esc(it.phone || '—')}</td>
       <td><strong style="color:${paid ? '#ef4444' : '#d97706'}">${paid ? 'Pagado' : 'Reservado'}</strong></td>
       <td>${paid ? '' : `<button class="btn-sm" style="background:#10b981" onclick="markPaid('${esc(num)}')">Marcar pagado</button>`}
       <button class="btn-sm" style="background:#64748b" onclick="freeNumber('${esc(num)}')">Liberar</button></td>`;
     tb.appendChild(tr);
   });
 }
+window.fillFromSel = () => {
+  if (!selected.length) return toast('Primero toca números libres en la grilla');
+  $('a-nums').value = [...selected].sort(byNum).join(', ');
+};
+window.adminAdd = async () => {
+  const name = $('a-name').value.trim(), phone = $('a-phone').value.trim();
+  const status = $('a-status').value;
+  const nums = [...new Set($('a-nums').value.split(/[\s,;]+/).filter(Boolean).map(x => String(Number(x)).padStart(2, '0')))].sort(byNum);
+  if (name.length < 2) return toast('Escribe el nombre');
+  if (!nums.length || nums.some(n => !all.includes(n))) return toast('Revisa los números (del 01 al 100)');
+  const res = await runTransaction(ticketsRef, cur => {
+    cur = cur || {};
+    if (nums.some(n => cur[n])) return;
+    nums.forEach(n => cur[n] = { name, phone: phone || '', status, date: new Date().toISOString(), inPerson: true });
+    return cur;
+  });
+  if (!res.committed) return toast('Alguno de esos números ya está tomado');
+  ['a-name', 'a-phone', 'a-nums'].forEach(i => $(i).value = '');
+  selected = selected.filter(n => !nums.includes(n)); render();
+  toast(`Agregados: ${nums.join(', ')}`);
+};
 window.markPaid = n => update(ref(db, `rifa_crepier/${n}`), { status: 'paid' });
 window.freeNumber = n => { if (confirm(`¿Liberar el número ${n}? Volverá a estar disponible.`)) remove(ref(db, `rifa_crepier/${n}`)); };
 
